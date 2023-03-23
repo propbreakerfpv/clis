@@ -1,7 +1,15 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, env};
 
 fn main() {
-    let results = search_dir(PathBuf::from("src/main.rs"), &"fuck".to_string());
+    let mut args = env::args();
+    args.next();
+    let search_term = args.next().unwrap_or_else(|| {
+        println!("Usage: clis [search terms] <optional path>");
+        std::process::exit(0);
+    });
+    let path = args.next().unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
+
+    let results = search_dir(PathBuf::from(path), &search_term);
     for result in results {
         println!("{:?} -> {}", result.path, result.context);
     }
