@@ -9,8 +9,8 @@ present working directory
 `cargo install clis`
 
 ## Usage
-Usage: clis <search term> [opt path]\
-flags:\
-  --version         displays the version of clis currently installed on the machine\
-  -i | --gitignore  when used this flag means that clis searches in directorys ignored by git\
-  -h | --help       displays this menue
+```Usage: clis <search term> [opt path]
+flags:
+  --version         displays the version of clis currently installed on the machine
+  -i | --gitignore  when used this flag means that clis searches in directorys ignored by git
+  -h | --help       displays this menue```
