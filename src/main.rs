@@ -1,80 +1,63 @@
-use std::{fs, path::PathBuf, env};
+use std::{path::PathBuf, env};
+
+use search::Filter;
+
+mod search;
 
 fn main() {
+
     let mut args = env::args();
+
+    if args_has("--version") {
+        println!("{}", env!("CARGO_PKG_VERSION"));
+        std::process::exit(0);
+    }
+    if args_has("--help") || args_has("-h") {
+        display_help();
+        std::process::exit(0);
+    }
     args.next();
     let search_term = args.next().unwrap_or_else(|| {
-        println!("Usage: clis [search terms] <optional path>");
+        display_help();
         std::process::exit(0);
     });
-    let path = args.next().unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
 
-    let results = search_dir(PathBuf::from(path), &search_term);
+    let mut path = args.next().unwrap_or(env::current_dir().unwrap().to_str().unwrap().to_string());
+    if path.starts_with("--") {
+        path = env::current_dir().unwrap().to_str().unwrap().to_string();
+    }
+
+    let mut filter = Filter {
+        filters: String::new(),
+        filter_type: search::FilterType::Gitignore
+    };
+
+    if args_has("--gitignore") || args_has("-i") {
+        filter.filter_type = search::FilterType::Normal;
+    }
+
+    let results = search::search_dir(PathBuf::from(path), &search_term, &filter);
     for result in results {
         println!("{:?} -> {}", result.path, result.context);
     }
 }
 
-#[derive(Debug, Clone)]
-struct SearchResult {
-    path: PathBuf,
-    context: String,
+
+fn display_help() {
+    println!("Usage: clis <search term> [opt path]");
+    println!("flags:");
+    println!("  --version         displays the version of clis currently installed on the machine");
+    println!("  -i | --gitignore  when used this flag means that clis searches in directorys ignored by git");
+    println!("  -h | --help       displays this menue");
 }
 
-fn search_dir(path: PathBuf, search_term: &String) -> Vec<SearchResult> {
-    let mut search_results = Vec::new();
-    let folder = fs::read_dir(&path);
-    if folder.is_ok() {
-        for file in folder.unwrap() {
-            let file = file.unwrap();
-            if file.file_type().unwrap().is_dir() {
-                search_dir(file.path(), search_term)
-                    .iter()
-                    .for_each(|x| search_results.push(x.clone()));
-                continue;
-            }
-            match search_file(file.path(), &search_term) {
-                Some(search) => {
-                    search_results.push(search);
-                }
-                None => {}
-            };
+
+fn args_has<T: ToString>(arg: T) -> bool {
+    for i in env::args(){
+        if i.contains(arg.to_string().as_str()) {
+            return true;
         }
-        return search_results;
-    } else {
-        return vec![match search_file(path, search_term) {
-            Some(search) => search,
-            None => panic!(),
-        }];
     }
+    return false;
 }
 
-fn search_file(path: PathBuf, search_term: &String) -> Option<SearchResult> {
-    let content = fs::read_to_string(&path).unwrap_or(String::from(""));
-    let index = content.find(search_term);
-    if index.is_some() {
-        let line: Vec<_> = content
-            .lines()
-            .filter(|&x| x.contains(search_term))
-            .map(|x| x.to_string())
-            .collect();
-        let start_index = line
-            .get(0)
-            .unwrap_or(&String::new())
-            .find(search_term);
-
-        let mut context = String::new();
-
-        if start_index.is_some() {
-            let start_index = start_index.unwrap();
-            let mut end_index = line[0].len();
-            if end_index > start_index + 50 {
-                end_index = start_index + 50;
-            }
-            context = line[0][start_index..end_index].to_string();
-        }
-
-        return Some(SearchResult { path, context });
-    }
-    return None;
-}
