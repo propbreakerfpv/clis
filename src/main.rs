@@ -3,9 +3,7 @@ use std::{path::PathBuf, env};
 use search::Filter;
 
 mod search;
-
 fn main() {
-
     let mut args = env::args();
 
     if args_has("--version") {
@@ -38,7 +36,8 @@ fn main() {
 
     let results = search::search_dir(PathBuf::from(path), &search_term, &filter);
     for result in results {
-        println!("{:?} -> {}", result.path, result.context);
+        println!("{:?}", result.path);
+        println!("{}", result.context);
     }
 }
 
