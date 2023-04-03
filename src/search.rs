@@ -9,27 +9,33 @@ pub struct SearchResult {
 }
 
 pub struct Filter {
-    pub filters: String, // tmp type
+    pub filters: Vec<Filt>, // tmp type
     pub filter_type: FilterType,
 }
 
 pub enum FilterType {
     Gitignore,
+    // Extention,
     Normal,
 }
 
-pub fn search_dir(path: PathBuf, search_term: &String, filter: &Filter) -> Vec<SearchResult> {
+#[derive(Debug, Clone)]
+pub enum Filt {
+    Extention(String),
+}
+
+pub fn search_dir(path: PathBuf, search_term: &String, filter: Filter) -> Vec<SearchResult> {
     match &filter.filter_type {
         FilterType::Gitignore => {
-            search_git_dir(path, search_term)
+            search_git_dir(path, search_term, filter.filters)
         }
         FilterType::Normal => {
-            search_normal_dir(path, search_term)
+            search_normal_dir(path, search_term, filter.filters)
         }
     }
 }
 
-fn search_git_dir(path: PathBuf, search_term: &String) -> Vec<SearchResult> {
+fn search_git_dir(path: PathBuf, search_term: &String, filters: Vec<Filt>) -> Vec<SearchResult> {
 
     let mut search_results = Vec::new();
 
@@ -38,6 +44,17 @@ fn search_git_dir(path: PathBuf, search_term: &String) -> Vec<SearchResult> {
             Ok(f) => f,
             Err(_) => continue,
         };
+        if filters.iter().any(|x| {
+            if file.file_name().to_str().unwrap().to_string().ends_with(match x {
+                Filt::Extention(v) => v,
+            }) {
+                true
+            } else {
+                false
+            }
+        }) {
+            continue;
+        }
 
         if file.file_type().unwrap().is_dir() {
             continue;
@@ -53,7 +70,7 @@ fn search_git_dir(path: PathBuf, search_term: &String) -> Vec<SearchResult> {
     search_results
 }
 
-fn search_normal_dir(path: PathBuf, search_term: &String) -> Vec<SearchResult> {
+fn search_normal_dir(path: PathBuf, search_term: &String, filters: Vec<Filt>) -> Vec<SearchResult> {
     let mut search_results = Vec::new();
     let folder = fs::read_dir(&path);
     if folder.is_ok() {
@@ -61,7 +78,7 @@ fn search_normal_dir(path: PathBuf, search_term: &String) -> Vec<SearchResult> {
             let file = file.unwrap();
 
             if file.file_type().unwrap().is_dir() {
-                search_normal_dir(file.path(), search_term)
+                search_normal_dir(file.path(), search_term, filters.clone())
                     .iter()
                     .for_each(|x| search_results.push(x.clone()));
                 continue;
